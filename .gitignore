@@ -1,0 +1,35 @@
+# Dataset images — transfer via rsync
+data/*/images/
+
+# Pre-computed embeddings — transfer via rsync
+embeddings/
+
+# Large archive files
+*.zip
+*.tar.gz
+*.tar
+
+# Large JSON datasets
+SKETCHY_train_nested_with_sketches_withHED.json
+required_images.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Conda
+*.conda
+
+# IDE
+.vscode/
+.idea/
