@@ -16,8 +16,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import os
+
 import numpy as np
 import torch
+
+# Suppress HuggingFace HTTP and progress noise — only errors surface.
+os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+os.environ.setdefault("HF_HUB_VERBOSITY", "error")
+
 from transformers import AutoModel, AutoProcessor
 
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
