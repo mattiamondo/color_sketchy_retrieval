@@ -13,6 +13,10 @@ embeddings/
 SKETCHY_train_nested_with_sketches_withHED.json
 required_images.txt
 
+# Node
+frontend/node_modules/
+frontend/dist/
+
 # Python
 __pycache__/
 *.py[cod]
