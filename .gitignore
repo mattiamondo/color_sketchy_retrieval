@@ -15,15 +15,14 @@ required_images.txt
 
 # Node
 frontend/node_modules/
-frontend/dist/
 
 # Python
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
-dist/
-build/
+/dist/
+/build/
 
 # Jupyter
 .ipynb_checkpoints/

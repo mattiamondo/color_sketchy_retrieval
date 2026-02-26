@@ -3,6 +3,10 @@ FastAPI backend for the text-to-image search engine.
 
 Exposes a /search endpoint backed by SigLIP2SearchEngine and serves
 image files as static assets so the browser can render results.
+
+In production (no Vite dev server), FastAPI also serves the pre-built
+React frontend from frontend/dist/ — mount it last so API routes take
+priority over the catch-all SPA handler.
 """
 
 from contextlib import asynccontextmanager
@@ -16,6 +20,7 @@ from search_cli import DATASET_CONFIGS, SigLIP2SearchEngine
 
 BASE_DIR = Path(__file__).parent
 IMAGE_DIR = BASE_DIR / "data" / "color" / "images"
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
 
 config = DATASET_CONFIGS["color"]
 
@@ -75,6 +80,12 @@ def search(
     ]
 
     return SearchResponse(query=query, elapsed_ms=elapsed_ms, results=items)
+
+
+# Serve the pre-built React app if the dist folder exists.
+# Must be mounted after all API routes so /search and /images take priority.
+if FRONTEND_DIST.exists():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
 
 
 if __name__ == "__main__":
