@@ -49,6 +49,7 @@ async def lifespan(app: FastAPI):
         metadata_path=str(config["metadata"]),
         image_key=config["image_key"],
         image_dir=str(config["image_dir"]),
+        text_embeddings_path=str(config["text_embeddings"]),
     )
     yield
 
@@ -62,11 +63,12 @@ app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
 def search(
     query: str = Query(..., min_length=1),
     top_k: int = Query(default=20, ge=1, le=100),
+    mode: str = Query(default="image", pattern="^(image|text)$"),
 ) -> SearchResponse:
     if not query.strip():
         raise HTTPException(status_code=400, detail="Query must not be empty")
 
-    results, elapsed_ms = engine.search(query.strip(), top_k=top_k)
+    results, elapsed_ms = engine.search(query.strip(), top_k=top_k, mode=mode)
 
     items = [
         SearchResultItem(

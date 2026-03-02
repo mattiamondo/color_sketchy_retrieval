@@ -43,12 +43,14 @@ MAX_TEXT_LENGTH = 64
 DATASET_CONFIGS: dict[str, dict] = {
     "sketchy_test": {
         "embeddings": EMBEDS_BASE / "sketchy_test" / "siglip2_image.npy",
+        "text_embeddings": EMBEDS_BASE / "sketchy_test" / "siglip2_text.npy",
         "metadata": DATA_BASE / "sketchy_test" / "metadata.json",
         "image_key": "original_filename",
         "caption_key": "original_caption",
     },
     "color": {
         "embeddings": EMBEDS_BASE / "color" / "siglip2_image.npy",
+        "text_embeddings": EMBEDS_BASE / "color" / "siglip2_text.npy",
         "metadata": DATA_BASE / "color" / "metadata.json",
         "image_key": "image",
         "image_dir": DATA_BASE / "color",
@@ -74,6 +76,7 @@ class SigLIP2SearchEngine:
         metadata_path: str,
         image_key: str,
         image_dir: Optional[str] = None,
+        text_embeddings_path: Optional[str] = None,
     ) -> None:
         """
         Args:
@@ -81,6 +84,7 @@ class SigLIP2SearchEngine:
             metadata_path: Path to JSON file with per-image metadata.
             image_key: Metadata field that holds the image file path.
             image_dir: Base directory used to resolve relative image paths.
+            text_embeddings_path: Path to .npy file of L2-normalized name/text embeddings, shape (N, D).
         """
         self.device = (
             "cuda" if torch.cuda.is_available()
@@ -90,7 +94,14 @@ class SigLIP2SearchEngine:
         logger.info("Device: %s", self.device)
 
         self.image_embeddings = np.load(embeddings_path).astype(np.float32)
-        logger.info("Loaded embeddings: shape %s", self.image_embeddings.shape)
+        logger.info("Loaded image embeddings: shape %s", self.image_embeddings.shape)
+
+        if text_embeddings_path and Path(text_embeddings_path).exists():
+            self.text_embeddings = np.load(text_embeddings_path).astype(np.float32)
+            logger.info("Loaded text embeddings: shape %s", self.text_embeddings.shape)
+        else:
+            self.text_embeddings = None
+            logger.info("No text embeddings loaded")
 
         with open(metadata_path, encoding="utf-8") as f:
             self.metadata: list[dict] = json.load(f)
@@ -141,17 +152,28 @@ class SigLIP2SearchEngine:
 
         return features.cpu().numpy()
 
-    def search(self, query: str, top_k: int = 5) -> tuple[list[SearchResult], float]:
+    def search(self, query: str, top_k: int = 5, mode: str = "image") -> tuple[list[SearchResult], float]:
         """
         Retrieve the top-k images most similar to the text query.
+
+        Args:
+            query: Text search query.
+            top_k: Number of results to return.
+            mode: "image" to compare against image embeddings (visual similarity),
+                  "text" to compare against name/caption embeddings (text similarity).
 
         Returns results and query latency in milliseconds.
         """
         t0 = time.perf_counter()
 
+        if mode == "text" and self.text_embeddings is not None:
+            target_embeddings = self.text_embeddings
+        else:
+            target_embeddings = self.image_embeddings
+
         query_emb = self.encode_text(query)
         # Both sides are L2-normalized, so dot product equals cosine similarity.
-        scores = np.dot(self.image_embeddings, query_emb.T).squeeze()
+        scores = np.dot(target_embeddings, query_emb.T).squeeze()
         top_indices = np.argsort(scores)[::-1][:top_k]
 
         results = [

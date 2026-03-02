@@ -15,6 +15,7 @@ interface SearchResponse {
 
 export default function App() {
   const [query, setQuery] = useState('')
+  const [mode, setMode] = useState<'image' | 'text'>('image')
   const [results, setResults] = useState<SearchResult[]>([])
   const [elapsed, setElapsed] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -28,7 +29,7 @@ export default function App() {
     setError(null)
 
     try {
-      const res = await fetch(`/search?query=${encodeURIComponent(q)}&top_k=20`)
+      const res = await fetch(`/search?query=${encodeURIComponent(q)}&top_k=20&mode=${mode}`)
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       const data: SearchResponse = await res.json()
       setResults(data.results)
@@ -55,6 +56,14 @@ export default function App() {
 
         {/* Search bar */}
         <div className="flex gap-3 mb-6">
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value as 'image' | 'text')}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="image">Image</option>
+            <option value="text">Text</option>
+          </select>
           <input
             type="text"
             value={query}
