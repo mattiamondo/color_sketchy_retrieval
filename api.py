@@ -34,6 +34,7 @@ class SearchResultItem(BaseModel):
     image_url: str
     name: str
     embedding_index: int
+    rgb: list[int] | None = None
 
 
 class SearchResponse(BaseModel):
@@ -78,12 +79,24 @@ app.mount("/sketchy-images", StaticFiles(directory=BASE_DIR / "data" / "sketchy_
 
 
 def _make_item(idx: int, rank: int, score: float, engine: SigLIP2SearchEngine, cfg: dict) -> SearchResultItem:
+    meta = engine.metadata[idx] if idx < len(engine.metadata) else {}
+    name = meta.get(cfg["caption_key"]) or meta.get("hex", "")
+    image_path = Path(engine.image_paths[idx])
+    # Preserve subdirectory (e.g. interpolated_images/) relative to images root
+    image_url_prefix = cfg["image_url_prefix"]
+    try:
+        images_root = Path(cfg["image_dir"]) / "images"
+        rel = image_path.relative_to(images_root)
+        image_url = f"{image_url_prefix}/{rel}"
+    except ValueError:
+        image_url = f"{image_url_prefix}/{image_path.name}"
     return SearchResultItem(
         rank=rank,
         score=score,
-        image_url=f"{cfg['image_url_prefix']}/{Path(engine.image_paths[idx]).name}",
-        name=engine.metadata[idx].get(cfg["caption_key"], "") if idx < len(engine.metadata) else "",
+        image_url=image_url,
+        name=name,
         embedding_index=idx,
+        rgb=meta.get("rgb"),
     )
 
 

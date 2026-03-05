@@ -6,6 +6,7 @@ interface SearchResult {
   image_url: string
   name: string
   embedding_index: number
+  rgb: [number, number, number] | null
 }
 
 interface SearchResponse {
@@ -237,6 +238,9 @@ export default function App() {
                 </div>
                 <div className="p-2">
                   <p className="text-xs font-medium text-gray-700 truncate">{r.name}</p>
+                  {r.rgb && (
+                    <p className="text-xs text-gray-400">rgb({r.rgb.join(', ')})</p>
+                  )}
                   <p className="text-xs text-gray-400">{r.score.toFixed(3)}</p>
                 </div>
               </div>
