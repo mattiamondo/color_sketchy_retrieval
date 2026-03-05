@@ -46,6 +46,7 @@ DATASET_CONFIGS: dict[str, dict] = {
         "text_embeddings": EMBEDS_BASE / "sketchy_test" / "siglip2_text.npy",
         "metadata": DATA_BASE / "sketchy_test" / "metadata.json",
         "image_key": "original_filename",
+        "image_dir": DATA_BASE / "sketchy_test",
         "caption_key": "original_caption",
     },
     "color": {
@@ -65,6 +66,7 @@ class SearchResult:
     score: float
     path: str
     metadata: dict
+    embedding_index: int = 0
 
 
 class SigLIP2SearchEngine:
@@ -182,6 +184,7 @@ class SigLIP2SearchEngine:
                 score=float(scores[idx]),
                 path=self.image_paths[idx],
                 metadata=self.metadata[idx] if idx < len(self.metadata) else {},
+                embedding_index=int(idx),
             )
             for rank, idx in enumerate(top_indices, start=1)
         ]
