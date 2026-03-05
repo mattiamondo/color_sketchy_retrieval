@@ -15,6 +15,7 @@ required_images.txt
 
 # Node
 frontend/node_modules/
+frontend/dist/
 
 # Python
 __pycache__/
