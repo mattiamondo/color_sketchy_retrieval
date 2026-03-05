@@ -48,6 +48,7 @@ DATASET_CONFIGS: dict[str, dict] = {
         "image_key": "original_filename",
         "image_dir": DATA_BASE / "sketchy_test",
         "caption_key": "original_caption",
+        "image_url_prefix": "/sketchy-images",
     },
     "color": {
         "embeddings": EMBEDS_BASE / "color" / "siglip2_image.npy",
@@ -56,6 +57,7 @@ DATASET_CONFIGS: dict[str, dict] = {
         "image_key": "image",
         "image_dir": DATA_BASE / "color",
         "caption_key": "name",
+        "image_url_prefix": "/images",
     },
 }
 

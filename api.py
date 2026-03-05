@@ -1,7 +1,7 @@
 """
 FastAPI backend for the text-to-image search engine.
 
-Exposes a /search endpoint backed by SigLIP2SearchEngine and serves
+Exposes /search and /refine endpoints backed by SigLIP2SearchEngine and serves
 image files as static assets so the browser can render results.
 
 In production (no Vite dev server), FastAPI also serves the pre-built
@@ -20,14 +20,12 @@ from pydantic import BaseModel
 from search_cli import DATASET_CONFIGS, SigLIP2SearchEngine
 
 BASE_DIR = Path(__file__).parent
-IMAGE_DIR = BASE_DIR / "data" / "color" / "images"
-SKETCHY_IMAGE_DIR = BASE_DIR / "data" / "sketchy_test" / "images"
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
-
-config = DATASET_CONFIGS["color"]
 
 ROCCHIO_ALPHA = 0.8
 ROCCHIO_BETA = 0.2
+
+VALID_DATASETS = list(DATASET_CONFIGS.keys())
 
 
 class SearchResultItem(BaseModel):
@@ -47,6 +45,7 @@ class SearchResponse(BaseModel):
 class RefineRequest(BaseModel):
     query: str
     mode: str
+    dataset: str
     positive_indices: list[int]
     negative_indices: list[int]
 
@@ -56,36 +55,42 @@ class RefineResponse(BaseModel):
     elapsed_ms: float
 
 
-engine: SigLIP2SearchEngine
+engines: dict[str, SigLIP2SearchEngine] = {}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global engine
-    engine = SigLIP2SearchEngine(
-        embeddings_path=str(config["embeddings"]),
-        metadata_path=str(config["metadata"]),
-        image_key=config["image_key"],
-        image_dir=str(config["image_dir"]),
-        text_embeddings_path=str(config["text_embeddings"]),
-    )
+    for name, cfg in DATASET_CONFIGS.items():
+        engines[name] = SigLIP2SearchEngine(
+            embeddings_path=str(cfg["embeddings"]),
+            metadata_path=str(cfg["metadata"]),
+            image_key=cfg["image_key"],
+            image_dir=str(cfg["image_dir"]),
+            text_embeddings_path=str(cfg["text_embeddings"]),
+        )
     yield
 
 
 app = FastAPI(lifespan=lifespan)
 
-app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
-app.mount("/sketchy-images", StaticFiles(directory=SKETCHY_IMAGE_DIR), name="sketchy-images")
+app.mount("/images", StaticFiles(directory=BASE_DIR / "data" / "color" / "images"), name="images")
+app.mount("/sketchy-images", StaticFiles(directory=BASE_DIR / "data" / "sketchy_test" / "images"), name="sketchy-images")
 
 
-def _make_item(idx: int, rank: int, score: float) -> SearchResultItem:
+def _make_item(idx: int, rank: int, score: float, engine: SigLIP2SearchEngine, cfg: dict) -> SearchResultItem:
     return SearchResultItem(
         rank=rank,
         score=score,
-        image_url=f"/images/{Path(engine.image_paths[idx]).name}",
-        name=engine.metadata[idx].get(config["caption_key"], "") if idx < len(engine.metadata) else "",
+        image_url=f"{cfg['image_url_prefix']}/{Path(engine.image_paths[idx]).name}",
+        name=engine.metadata[idx].get(cfg["caption_key"], "") if idx < len(engine.metadata) else "",
         embedding_index=idx,
     )
+
+
+def _get_engine_and_cfg(dataset: str) -> tuple[SigLIP2SearchEngine, dict]:
+    if dataset not in engines:
+        raise HTTPException(status_code=400, detail=f"Unknown dataset '{dataset}'. Valid: {VALID_DATASETS}")
+    return engines[dataset], DATASET_CONFIGS[dataset]
 
 
 @app.get("/search", response_model=SearchResponse)
@@ -93,13 +98,14 @@ def search(
     query: str = Query(..., min_length=1),
     top_k: int = Query(default=20, ge=1, le=100),
     mode: str = Query(default="image", pattern="^(image|text)$"),
+    dataset: str = Query(default="color"),
 ) -> SearchResponse:
     if not query.strip():
         raise HTTPException(status_code=400, detail="Query must not be empty")
 
+    engine, cfg = _get_engine_and_cfg(dataset)
     results, elapsed_ms = engine.search(query.strip(), top_k=top_k, mode=mode)
-
-    items = [_make_item(r.embedding_index, r.rank, r.score) for r in results]
+    items = [_make_item(r.embedding_index, r.rank, r.score, engine, cfg) for r in results]
 
     return SearchResponse(query=query, elapsed_ms=elapsed_ms, results=items)
 
@@ -114,13 +120,15 @@ def refine(req: RefineRequest) -> RefineResponse:
     if not req.positive_indices and not req.negative_indices:
         raise HTTPException(status_code=400, detail="At least one positive or negative index required")
 
+    engine, cfg = _get_engine_and_cfg(req.dataset)
+
     emb_matrix = (
         engine.text_embeddings
         if req.mode == "text" and engine.text_embeddings is not None
         else engine.image_embeddings
     )
 
-    q = engine.encode_text(req.query.strip()).squeeze()  # (D,)
+    q = engine.encode_text(req.query.strip()).squeeze()
 
     if req.positive_indices:
         q = q + ROCCHIO_ALPHA * emb_matrix[req.positive_indices].mean(axis=0)
@@ -132,7 +140,7 @@ def refine(req: RefineRequest) -> RefineResponse:
     scores = np.dot(emb_matrix, q).squeeze()
     top_indices = np.argsort(scores)[::-1][:20]
 
-    items = [_make_item(int(idx), rank, float(scores[idx])) for rank, idx in enumerate(top_indices, start=1)]
+    items = [_make_item(int(idx), rank, float(scores[idx]), engine, cfg) for rank, idx in enumerate(top_indices, start=1)]
 
     return RefineResponse(results=items, elapsed_ms=(time.perf_counter() - t0) * 1000)
 

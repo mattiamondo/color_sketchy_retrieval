@@ -22,6 +22,7 @@ interface RefineResponse {
 export default function App() {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<'image' | 'text'>('image')
+  const [dataset, setDataset] = useState<'color' | 'sketchy_test'>('color')
   const [results, setResults] = useState<SearchResult[]>([])
   const [elapsed, setElapsed] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -45,7 +46,7 @@ export default function App() {
     resetFeedback()
 
     try {
-      const res = await fetch(`/search?query=${encodeURIComponent(q)}&top_k=20&mode=${mode}`)
+      const res = await fetch(`/search?query=${encodeURIComponent(q)}&top_k=20&mode=${mode}&dataset=${dataset}`)
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       const data: SearchResponse = await res.json()
       setResults(data.results)
@@ -71,6 +72,7 @@ export default function App() {
         body: JSON.stringify({
           query: currentQuery,
           mode,
+          dataset,
           positive_indices: [...positiveSet],
           negative_indices: [...negativeSet],
         }),
@@ -123,6 +125,19 @@ export default function App() {
 
         {/* Search bar */}
         <div className="flex gap-3 mb-6">
+          <select
+            value={dataset}
+            onChange={e => {
+              setDataset(e.target.value as 'color' | 'sketchy_test')
+              setResults([])
+              setElapsed(null)
+              resetFeedback()
+            }}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="color">Color</option>
+            <option value="sketchy_test">Sketchy</option>
+          </select>
           <select
             value={mode}
             onChange={e => setMode(e.target.value as 'image' | 'text')}
