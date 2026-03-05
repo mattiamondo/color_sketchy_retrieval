@@ -236,12 +236,14 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-                <div className="p-2">
-                  <p className="text-xs font-medium text-gray-700 truncate">{r.name}</p>
+                <div className="p-2 flex items-end justify-between gap-1">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-gray-700 truncate">{r.name}</p>
+                    <p className="text-xs text-gray-400">{r.score.toFixed(3)}</p>
+                  </div>
                   {r.rgb && (
-                    <p className="text-xs text-gray-400">rgb({r.rgb.join(', ')})</p>
+                    <p className="text-xs text-gray-400 shrink-0">rgb({r.rgb.join(', ')})</p>
                   )}
-                  <p className="text-xs text-gray-400">{r.score.toFixed(3)}</p>
                 </div>
               </div>
             )
