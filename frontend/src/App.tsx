@@ -23,7 +23,7 @@ interface RefineResponse {
 export default function App() {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<'image' | 'text'>('image')
-  const [dataset, setDataset] = useState<'color' | 'sketchy_test'>('color')
+  const [dataset, setDataset] = useState<'color' | 'sketchy_test' | 'flickr30k'>('color')
   const [results, setResults] = useState<SearchResult[]>([])
   const [elapsed, setElapsed] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -129,7 +129,7 @@ export default function App() {
           <select
             value={dataset}
             onChange={e => {
-              setDataset(e.target.value as 'color' | 'sketchy_test')
+              setDataset(e.target.value as 'color' | 'sketchy_test' | 'flickr30k')
               setResults([])
               setElapsed(null)
               resetFeedback()
@@ -138,6 +138,7 @@ export default function App() {
           >
             <option value="color">Color</option>
             <option value="sketchy_test">Sketchy</option>
+            <option value="flickr30k">Flickr30k</option>
           </select>
           <select
             value={mode}
@@ -238,7 +239,7 @@ export default function App() {
                 </div>
                 <div className="p-2 flex items-end justify-between gap-1">
                   <div className="min-w-0">
-                    <p className="text-xs font-medium text-gray-700 truncate">{r.name}</p>
+                    <p className="text-xs font-medium text-gray-700 max-h-12 overflow-y-auto my-2">{r.name}</p>
                     <p className="text-xs text-gray-400">{r.score.toFixed(3)}</p>
                   </div>
                   {r.rgb && (

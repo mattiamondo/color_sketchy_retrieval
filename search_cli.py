@@ -59,6 +59,15 @@ DATASET_CONFIGS: dict[str, dict] = {
         "caption_key": "name",
         "image_url_prefix": "/images",
     },
+    "flickr30k": {
+        "embeddings": EMBEDS_BASE / "flickr30k_first_caption" / "siglip2_image.npy",
+        "text_embeddings": EMBEDS_BASE / "flickr30k_first_caption" / "siglip2_text.npy",
+        "metadata": DATA_BASE / "flickr30k" / "metadata.json",
+        "image_key": "filename",
+        "image_dir": DATA_BASE / "flickr30k" / "flickr30k_images",
+        "caption_key": "caption_first",
+        "image_url_prefix": "/flickr30k-images",
+    },
 }
 
 
@@ -140,7 +149,7 @@ class SigLIP2SearchEngine:
         """Encode a text query into an L2-normalized embedding vector."""
         with torch.no_grad():
             inputs = self.processor(
-                text=[query],
+                text=[query.lower()],
                 padding="max_length",
                 max_length=MAX_TEXT_LENGTH,
                 truncation=True,

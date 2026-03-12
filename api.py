@@ -76,6 +76,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.mount("/images", StaticFiles(directory=BASE_DIR / "data" / "color" / "images"), name="images")
 app.mount("/sketchy-images", StaticFiles(directory=BASE_DIR / "data" / "sketchy_test" / "images"), name="sketchy-images")
+app.mount("/flickr30k-images", StaticFiles(directory=BASE_DIR / "data" / "flickr30k" / "flickr30k_images"), name="flickr30k-images")
 
 
 def _make_item(idx: int, rank: int, score: float, engine: SigLIP2SearchEngine, cfg: dict) -> SearchResultItem:
